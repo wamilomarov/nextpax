@@ -13,7 +13,7 @@ class AvailabilityController extends Controller
 
     public function index()
     {
-         $dates = $this->availabilityService->getAvailabilities();
-         return view('availabilities')->with(compact('dates'));
+        $dates = $this->availabilityService->getAvailabilities();
+        return view('availabilities')->with(compact('dates'));
     }
 }

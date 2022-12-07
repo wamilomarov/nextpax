@@ -3,7 +3,7 @@
     * @var \App\DTO\AvailabilityDataDTO $date
     */
 @endphp
-    <!doctype html>
+        <!doctype html>
 <html lang="en">
 <head>
     <!-- Required meta tags -->
@@ -30,13 +30,13 @@
     <tbody>
     @foreach($dates as $date)
         @foreach($date->prices as $persons => $prices)
-                <tr>
-                    <th scope="row">{{$date->availability->date->toDateString()}}</th>
-                    <td>{{$persons}}</td>
-                    @foreach($prices as $price)
+            <tr>
+                <th scope="row">{{$date->availability->date->toDateString()}}</th>
+                <td>{{$persons}}</td>
+                @foreach($prices as $price)
                     <td>{{$price}}</td>
-                    @endforeach
-                </tr>
+                @endforeach
+            </tr>
         @endforeach
 
     @endforeach

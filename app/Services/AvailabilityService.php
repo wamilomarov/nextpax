@@ -37,9 +37,10 @@ class AvailabilityService
             }
             $data[] = $item;
         }
-        return new LengthAwarePaginator($data, $availabilities->total(), $availabilities->perPage(), $availabilities->currentPage(), [
-            'path' => Paginator::resolveCurrentPath(),
-        ]);
+        return new LengthAwarePaginator($data, $availabilities->total(), $availabilities->perPage(),
+            $availabilities->currentPage(), [
+                'path' => Paginator::resolveCurrentPath(),
+            ]);
     }
 
     public function getPricesByNumberOfPersons(Availability $availability, int $persons): array
