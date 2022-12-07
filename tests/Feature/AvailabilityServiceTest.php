@@ -19,7 +19,7 @@ class AvailabilityServiceTest extends TestCase
     /**
      * @throws ReflectionException
      */
-    public function test_two_prices()
+    public function testTwoPrices()
     {
 //        2 prices:
 //        1. minimum 1 day in a row - costs 250 eur + 120 eur per extra person
@@ -121,7 +121,7 @@ class AvailabilityServiceTest extends TestCase
     /**
      * @throws ReflectionException
      */
-    public function test_three_prices()
+    public function testThreePrices()
     {
 //        2 prices:
 //        1. minimum 1 day in a row - costs 250 eur + 120 eur per extra person
@@ -206,7 +206,7 @@ class AvailabilityServiceTest extends TestCase
     /**
      * @throws ReflectionException
      */
-    public function test_weekdays_check()
+    public function testWeekdaysCheck()
     {
 //        2 prices:
 //        1. minimum 1 day in a row - costs 250 eur + 120 eur per extra person

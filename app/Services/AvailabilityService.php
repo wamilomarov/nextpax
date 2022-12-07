@@ -37,10 +37,13 @@ class AvailabilityService
             }
             $data[] = $item;
         }
-        return new LengthAwarePaginator($data, $availabilities->total(), $availabilities->perPage(),
-            $availabilities->currentPage(), [
-                'path' => Paginator::resolveCurrentPath(),
-            ]);
+        return new LengthAwarePaginator(
+            $data,
+            $availabilities->total(),
+            $availabilities->perPage(),
+            $availabilities->currentPage(),
+            ['path' => Paginator::resolveCurrentPath()]
+        );
     }
 
     public function getPricesByNumberOfPersons(Availability $availability, int $persons): array
@@ -142,7 +145,6 @@ class AvailabilityService
         /** @var Carbon $day */
         foreach ($pricePeriod as $day) {
             if (!in_array($day->dayOfWeek, $price->weekdays_list)) {
-
                 return $compatibility;
             }
         }
@@ -166,7 +168,6 @@ class AvailabilityService
     {
         $amount = 0;
         foreach ($prices as $price) {
-
             $result = $this->compatibleWithPeriod($period, $price, $persons);
             if ($result->compatible) {
                 $amount += $result->cost;

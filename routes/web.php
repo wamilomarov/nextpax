@@ -14,8 +14,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', 'index');
 
-Route::get('availabilities', [AvailabilityController::class, 'index']);
+Route::get('index', [AvailabilityController::class, 'index']);
