@@ -11,46 +11,43 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
 use Illuminate\Contracts\Database\Eloquent\Builder;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 
 class AvailabilityService
 {
     const DEFAULT_PRICE = 0;
 
-    public function getAvailabilities(): LengthAwarePaginator
+    public function getAvailabilities(): array
     {
         $data = [];
         $availabilities = Availability::query()
-            ->with(['prices'])
             ->where('arrival_allowed', true)
             ->where('quantity', '>', 0)
-            ->paginate(10);
+        ->get();
 
         /** @var Availability $availability */
         foreach ($availabilities as $availability) {
-            $maxPersons = $availability->prices->max('max_persons_number');
+            $maxPersons = $availability
+                ->prices()
+                ->whereDate('period_from', '<=', $availability->date)
+                ->whereDate('period_till', '>=', $availability->date)
+                ->get()
+                ->max('max_persons_number');
             $item = new AvailabilityDataDTO($availability);
             for ($i = 1; $i <= $maxPersons; $i++) {
                 $item->prices[$i] = $this->getPricesByNumberOfPersons($availability, $i);
             }
             $data[] = $item;
         }
-        return new LengthAwarePaginator(
-            $data,
-            $availabilities->total(),
-            $availabilities->perPage(),
-            $availabilities->currentPage(),
-            ['path' => Paginator::resolveCurrentPath()]
-        );
+
+        return $data;
     }
 
     public function getPricesByNumberOfPersons(Availability $availability, int $persons): array
     {
         $prices = [];
         for ($i = 1; $i <= 21; $i++) {
-            $prices[$i] = $this->getPriceByDurationAndNumberOfPersons($availability, $persons, $i);
+            $prices[$i] = $this->getPriceByDurationAndNumberOfPersons($availability, $persons, $i) / 100;
         }
         return $prices;
     }
@@ -73,7 +70,7 @@ class AvailabilityService
         }
 
         $arrivalDate = $availability->date->toImmutable();
-        $departureDate = $arrivalDate->addDays($duration);
+        $departureDate = $arrivalDate->addDays($duration - 1);
 
         if (!$this->departureAllowed($availability, $departureDate)) {
             return self::DEFAULT_PRICE;
@@ -84,7 +81,7 @@ class AvailabilityService
             ->where('duration', '<=', $duration)
             ->where(fn(Builder $query) => $query
                 ->whereDate('period_from', '<=', $arrivalDate)
-                ->orWhereDate('period_till', '>=', $departureDate))
+                ->whereDate('period_till', '>=', $departureDate))
             ->where('maximum_stay', '>=', $duration)
             ->where('minimum_stay', '<=', $duration)
             ->get();
@@ -112,7 +109,7 @@ class AvailabilityService
         int $duration,
         int $persons,
     ): float|int {
-        $departureDate = $arrivalDate->addDays($duration);
+        $departureDate = $arrivalDate->addDays($duration - 1);
 
         // Prioritize lower rate prices
         $prices = $prices->sortBy(fn(Price $price) => $price->getRatePerNight($persons))->values();
@@ -129,7 +126,7 @@ class AvailabilityService
         $compatibility->cost = 0;
         $compatibility->remainingPeriod = $period;
 
-        if ($price->duration >= $period->count()) {
+        if ($price->duration > $period->count()) {
             return $compatibility;
         }
 
