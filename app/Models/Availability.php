@@ -21,7 +21,8 @@ use Illuminate\Support\Collection;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  *
- * @property Collection $prices
+ * @property Collection|Price[] $prices
+ * @property Collection|Availability[] $departureAvailabilities
  */
 class Availability extends Model
 {
@@ -47,5 +48,12 @@ class Availability extends Model
     public function prices(): HasMany
     {
         return $this->hasMany(Price::class, 'property_id', 'property_id');
+    }
+
+    public function departureAvailabilities(): HasMany
+    {
+        return $this
+            ->hasMany(Availability::class, 'property_id', 'property_id')
+            ->where('departure_allowed', true);
     }
 }

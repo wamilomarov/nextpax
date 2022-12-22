@@ -10,7 +10,7 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
-use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
 class AvailabilityService
@@ -21,17 +21,25 @@ class AvailabilityService
     {
         $data = [];
         $availabilities = Availability::query()
+            ->with(['departureAvailabilities'])
             ->where('arrival_allowed', true)
             ->where('quantity', '>', 0)
         ->get();
 
+        $minDate = $availabilities->min('date');
+        $maxDate = $availabilities->max('date');
+
+        $availabilities->load([
+            'prices' => fn(HasMany $query) => $query->whereDate('period_from', '>=', $minDate)
+            ->whereDate('period_till', '<=', $maxDate)
+        ]);
+
         /** @var Availability $availability */
         foreach ($availabilities as $availability) {
             $maxPersons = $availability
-                ->prices()
-                ->whereDate('period_from', '<=', $availability->date)
-                ->whereDate('period_till', '>=', $availability->date)
-                ->get()
+                ->prices
+                ->where('period_from', '<=', $availability->date)
+                ->where('period_till', '>=', $availability->date)
                 ->max('max_persons_number');
             $item = new AvailabilityDataDTO($availability);
             for ($i = 1; $i <= $maxPersons; $i++) {
@@ -77,14 +85,13 @@ class AvailabilityService
         }
 
         $prices = $availability
-            ->prices()
+            ->prices
             ->where('duration', '<=', $duration)
-            ->where(fn(Builder $query) => $query
-                ->whereDate('period_from', '<=', $arrivalDate)
-                ->whereDate('period_till', '>=', $departureDate))
+            ->where(fn($query) => $query
+                ->where('period_from', '<=', $arrivalDate)
+                ->where('period_till', '>=', $departureDate))
             ->where('maximum_stay', '>=', $duration)
-            ->where('minimum_stay', '<=', $duration)
-            ->get();
+            ->where('minimum_stay', '<=', $duration);
 
         if ($prices->isEmpty()) {
             return self::DEFAULT_PRICE;
@@ -181,10 +188,8 @@ class AvailabilityService
 
     private function departureAllowed(Availability $availability, CarbonInterface $date): bool
     {
-        return Availability::query()
-            ->where('property_id', $availability->property_id)
-            ->whereDate('date', $date)
-            ->where('departure_allowed', true)
-            ->exists();
+        return $availability->departureAvailabilities
+            ->where('date', $date)
+            ->count() > 0;
     }
 }
