@@ -54,6 +54,7 @@ class Availability extends Model
     {
         return $this
             ->hasMany(Availability::class, 'property_id', 'property_id')
+            ->where('quantity', '>', 0)
             ->where('departure_allowed', true);
     }
 }
