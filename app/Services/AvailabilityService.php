@@ -87,9 +87,8 @@ class AvailabilityService
         $prices = $availability
             ->prices
             ->where('duration', '<=', $duration)
-            ->where(fn($query) => $query
-                ->where('period_from', '<=', $arrivalDate)
-                ->where('period_till', '>=', $departureDate))
+            ->where('period_from', '<=', $arrivalDate)
+            ->where('period_till', '>=', $departureDate)
             ->where('maximum_stay', '>=', $duration)
             ->where('minimum_stay', '<=', $duration);
 
