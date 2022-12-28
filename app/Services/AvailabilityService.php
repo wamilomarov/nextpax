@@ -24,14 +24,14 @@ class AvailabilityService
             ->with(['departureAvailabilities'])
             ->where('arrival_allowed', true)
             ->where('quantity', '>', 0)
-        ->get();
+            ->get();
 
         $minDate = $availabilities->min('date');
         $maxDate = $availabilities->max('date');
 
         $availabilities->load([
             'prices' => fn(HasMany $query) => $query->whereDate('period_from', '>=', $minDate)
-            ->whereDate('period_till', '<=', $maxDate)
+                ->whereDate('period_till', '<=', $maxDate)
         ]);
 
         /** @var Availability $availability */
@@ -77,8 +77,9 @@ class AvailabilityService
             return self::DEFAULT_PRICE;
         }
 
+        $diff = $duration - 1;
         $arrivalDate = $availability->date->toImmutable();
-        $departureDate = $arrivalDate->addDays($duration - 1);
+        $departureDate = $arrivalDate->addDays($diff);
 
         if (!$this->departureAllowed($availability, $departureDate)) {
             return self::DEFAULT_PRICE;
@@ -87,10 +88,9 @@ class AvailabilityService
         $prices = $availability
             ->prices
             ->where('duration', '<=', $duration)
-            ->where('period_from', '<=', $arrivalDate)
-            ->where('period_till', '>=', $departureDate)
             ->where('maximum_stay', '>=', $duration)
-            ->where('minimum_stay', '<=', $duration);
+            ->where('minimum_stay', '<=', $duration)
+            ->filter(fn(Price $price) => $price->period_from <= $departureDate && $price->period_till >= $arrivalDate);
 
         if ($prices->isEmpty()) {
             return self::DEFAULT_PRICE;
@@ -118,7 +118,14 @@ class AvailabilityService
         $departureDate = $arrivalDate->addDays($duration - 1);
 
         // Prioritize lower rate prices
-        $prices = $prices->sortBy(fn(Price $price) => $price->getRatePerNight($persons))->values();
+        $prices = $prices->sortBy([
+            fn(Price $priceA, Price $priceB) => $priceA->period_from <=> $priceB->period_from,
+            fn(
+                Price $priceA,
+                Price $priceB
+            ) => $priceA->getRatePerNight($persons) <=> $priceB->getRatePerNight($persons),
+        ])
+            ->values();
 
         $period = CarbonPeriod::create($arrivalDate, $departureDate);
 
@@ -136,7 +143,7 @@ class AvailabilityService
             return $compatibility;
         }
 
-        if ($period->start < $price->period_from || $period->end > $price->period_till) {
+        if ($price->period_from > $period->end || $price->period_till < $period->start) {
             return $compatibility;
         }
 
@@ -170,6 +177,17 @@ class AvailabilityService
     private function optimizeAmount(Collection $prices, CarbonPeriod $period, int $persons): float|int
     {
         $amount = 0;
+
+        foreach ($period as $day) {
+            $coveringPrice = $prices
+                ->where('period_from', '<=', $day)
+                ->where('period_till', '>=', $day)
+                ->count();
+            if ($coveringPrice === 0) {
+                return self::DEFAULT_PRICE;
+            }
+        }
+
         foreach ($prices as $price) {
             $result = $this->compatibleWithPeriod($period, $price, $persons);
             if ($result->compatible) {
@@ -188,7 +206,7 @@ class AvailabilityService
     private function departureAllowed(Availability $availability, CarbonInterface $date): bool
     {
         return $availability->departureAvailabilities
-            ->where('date', $date)
-            ->count() > 0;
+                ->where('date', $date)
+                ->count() > 0;
     }
 }
